@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}我的评论 - 动画之家{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">我的评论管理</h1>
+        <p class="text-gray-500">查看和管理您的所有评论和回复</p>
+    </div>
+    
+    <!-- 我的评论 -->
+    <div class="mb-12">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">我的评论</h2>
+        
+        {% if my_comments %}
+        <div class="space-y-6">
+            {% for comment in my_comments %}
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">
+                            <a href="{{ url_for('anime_detail', anime_id=comment.anime.id) }}" class="hover:text-primary">{{ comment.anime.name }}</a>
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('delete_comment', comment_id=comment.id) }}">
+                        <button type="submit" class="text-red-500 hover:text-red-700" onclick="return confirm('确定要删除这条评论吗？相关回复也会被删除')">
+                            <i class="fa fa-trash"></i> 删除
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="mb-4 text-gray-700">{{ comment.content }}</div>
+                
+                {% if comment.replies %}
+                <div class="pl-4 border-l-2 border-gray-200">
+                    <p class="font-medium text-gray-900 mb-2">回复 ({{ comment.replies|length }})</p>
+                    <div class="space-y-3">
+                        {% for reply in comment.replies %}
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <div class="flex items-center mb-1">
+                                <span class="font-medium text-gray-900 text-sm">{{ reply.user.username }}</span>
+                                <span class="mx-2 text-gray-300">•</span>
+                                <span class="text-xs text-gray-500">{{ reply.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            </div>
+                            <p class="text-gray-700 text-sm">{{ reply.content }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+            <div class="text-gray-400 mb-4">
+                <i class="fa fa-comment-o text-5xl"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">您还没有发表任何评论</h3>
+            <p class="text-sm text-gray-500">去浏览动画并发表您的看法吧</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- 我的回复 -->
+    <div class="mb-12">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">我的回复</h2>
+        
+        {% if my_replies %}
+        <div class="space-y-6">
+            {% for reply in my_replies %}
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">
+                            <a href="{{ url_for('anime_detail', anime_id=reply.comment.anime.id) }}" class="hover:text-primary">{{ reply.comment.anime.name }}</a>
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1">{{ reply.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('delete_reply', reply_id=reply.id) }}">
+                        <button type="submit" class="text-red-500 hover:text-red-700" onclick="return confirm('确定要删除这条回复吗？')">
+                            <i class="fa fa-trash"></i> 删除
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-500 mb-2">回复于:</p>
+                    <p class="text-gray-700 text-sm bg-gray-50 p-3 rounded-md">{{ reply.comment.content }}</p>
+                </div>
+                
+                <div class="text-gray-700">{{ reply.content }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+            <div class="text-gray-400 mb-4">
+                <i class="fa fa-reply text-5xl"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">您还没有发表任何回复</h3>
+            <p class="text-sm text-gray-500">参与讨论，回复他人的评论吧</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- 别人对我的评论的回复 -->
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">收到的回复</h2>
+        
+        {% if replies_to_my_comments %}
+        <div class="space-y-6">
+            {% for reply in replies_to_my_comments %}
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        <a href="{{ url_for('anime_detail', anime_id=reply.comment.anime.id) }}" class="hover:text-primary">{{ reply.comment.anime.name }}</a>
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">{{ reply.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-500 mb-2">您的评论:</p>
+                    <p class="text-gray-700 text-sm bg-gray-50 p-3 rounded-md">{{ reply.comment.content }}</p>
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-500 mb-2">{{ reply.user.username }} 的回复:</p>
+                    <p class="text-gray-700">{{ reply.content }}</p>
+                </div>
+                
+                <a href="{{ url_for('anime_detail', anime_id=reply.comment.anime.id) }}#comment-{{ reply.comment.id }}" class="text-primary hover:text-primary/80">
+                    <i class="fa fa-comment mr-1"></i> 查看原文并回复
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+            <div class="text-gray-400 mb-4">
+                <i class="fa fa-bell-o text-5xl"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">还没有收到任何回复</h3>
+            <p class="text-sm text-gray-500">当有人回复您的评论时，会在这里显示</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">插画详情</h1>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <!-- 插画图片 - 添加点击事件 -->
+        <div class="relative cursor-pointer" id="image-container">
+            <img src="{{ image.url }}" alt="{{ image.prompt }}" class="w-full h-auto max-h-[600px] object-contain mx-auto my-6" id="main-image">
+        </div>
+
+        <!-- 插画信息 -->
+        <div class="p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-1">{{ image.prompt }}</h2>
+                <p class="text-gray-500">
+                    <i class="fa fa-user mr-2"></i>
+                    <span class="font-medium">{{ image.user.username }}</span>
+                    <span class="mx-2">•</span>
+                    <i class="fa fa-calendar mr-2"></i>
+                    <span>{{ image.created_at.strftime('%Y年%m月%d日 %H:%M:%S') }}</span>
+                </p>
+            </div>
+
+            <!-- 负向提示词 -->
+            {% if image.negative_prompt %}
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">负向提示词</h3>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    {{ image.negative_prompt }}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 其他信息可在此扩展 -->
+        </div>
+
+        <!-- 底部操作按钮 -->
+        <div class="px-6 pb-6 flex justify-end space-x-4">
+            {% if image.user_id == current_user_id %}
+            <form action="{{ url_for('delete_image', image_id=image.id) }}" method="POST" style="display:inline;">
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors mr-2" onclick="return confirm('确定要删除这幅插画吗？')">
+                    <i class="fa fa-trash mr-1"></i> 删除
+                </button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('download_image', image_id=image.id) }}" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors">
+                <i class="fa fa-download mr-1"></i> 下载图片
+            </a>
+        </div>
+    </div>
+
+    <div class="mt-8 text-center">
+        <a href="{{ url_for('gallery') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+            <i class="fa fa-arrow-left mr-2"></i> 返回插画画廊
+        </a>
+    </div>
+</div>
+
+<!-- 大图查看模态框 -->
+<div id="image-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center hidden">
+    <button id="close-modal" class="absolute top-6 right-6 text-white text-4xl hover:text-gray-300 transition-colors">
+        <i class="fa fa-times"></i>
+    </button>
+
+    <!-- 图片操作工具栏 -->
+    <div class="absolute top-6 left-6 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg">
+        <button id="zoom-in" class="mr-2 hover:text-blue-400"><i class="fa fa-search-plus"></i> 放大</button>
+        <button id="zoom-out" class="mr-2 hover:text-blue-400"><i class="fa fa-search-minus"></i> 缩小</button>
+        <button id="reset-view" class="hover:text-blue-400"><i class="fa fa-refresh"></i> 重置</button>
+    </div>
+
+    <div class="max-w-7xl w-full px-4 relative">
+        <img id="modal-image" src="{{ image.url }}" alt="{{ image.prompt }}" class="max-h-[90vh] w-auto mx-auto" style="transform-origin: center center;">
+    </div>
+</div>
+
+<script>
+    // 获取元素
+    const imageContainer = document.getElementById('image-container');
+    const mainImage = document.getElementById('main-image');
+    const modal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const closeModal = document.getElementById('close-modal');
+    const zoomInBtn = document.getElementById('zoom-in');
+    const zoomOutBtn = document.getElementById('zoom-out');
+    const resetViewBtn = document.getElementById('reset-view');
+
+    // 初始化图片状态
+    let scale = 1;           // 缩放比例
+    let translateX = 0;      // X轴偏移
+    let translateY = 0;      // Y轴偏移
+    let isDragging = false;  // 拖拽状态
+    let lastX, lastY;        // 上次鼠标位置
+    let startScale = 1;      // 开始拖拽时的缩放比例
+
+    // 点击图片打开模态框
+    imageContainer.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+        modalImage.src = mainImage.src;
+        resetImage(); // 重置图片状态
+        document.body.style.overflow = 'hidden'; // 防止背景滚动
+    });
+
+    // 点击关闭按钮关闭模态框
+    closeModal.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        document.body.style.overflow = ''; // 恢复背景滚动
+    });
+
+    // 点击模态框背景关闭模态框
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    });
+
+    // 键盘ESC关闭模态框
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    });
+
+    // 放大图片
+    zoomInBtn.addEventListener('click', () => {
+        scale = Math.min(scale + 0.2, 5); // 最大放大5倍
+        updateImageTransform();
+    });
+
+    // 缩小图片
+    zoomOutBtn.addEventListener('click', () => {
+        scale = Math.max(scale - 0.2, 0.5); // 最小缩小到0.5倍
+        updateImageTransform();
+    });
+
+    // 重置图片视图
+    resetViewBtn.addEventListener('click', resetImage);
+
+    // 鼠标滚轮缩放图片
+    modalImage.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.2 : -0.2;
+        scale = Math.max(0.5, Math.min(scale + delta, 5));
+        updateImageTransform();
+    });
+
+    // 鼠标拖拽移动图片
+    modalImage.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', endDrag);
+    document.addEventListener('mouseleave', endDrag);
+
+    // 触摸拖拽移动图片
+    modalImage.addEventListener('touchstart', startDrag, { passive: false });
+    document.addEventListener('touchmove', drag, { passive: false });
+    document.addEventListener('touchend', endDrag);
+    document.addEventListener('touchleave', endDrag);
+
+    // 开始拖拽
+    function startDrag(e) {
+        isDragging = true;
+        startScale = scale;
+
+        // 处理鼠标事件
+        if (e.type === 'mousedown') {
+            lastX = e.clientX;
+            lastY = e.clientY;
+        }
+        // 处理触摸事件
+        else if (e.type === 'touchstart') {
+            lastX = e.touches[0].clientX;
+            lastY = e.touches[0].clientY;
+            e.preventDefault();
+        }
+    }
+
+    // 拖拽中
+    function drag(e) {
+        if (!isDragging) return;
+
+        // 计算鼠标/触摸移动距离
+        let currentX, currentY;
+        if (e.type === 'mousemove') {
+            currentX = e.clientX;
+            currentY = e.clientY;
+        } else if (e.type === 'touchmove') {
+            currentX = e.touches[0].clientX;
+            currentY = e.touches[0].clientY;
+            e.preventDefault();
+        }
+
+        // 计算偏移量
+        const dx = (currentX - lastX) / startScale;
+        const dy = (currentY - lastY) / startScale;
+
+        // 更新偏移量
+        translateX += dx;
+        translateY += dy;
+
+        // 更新上次位置
+        lastX = currentX;
+        lastY = currentY;
+
+        // 应用变换
+        updateImageTransform();
+    }
+
+    // 结束拖拽
+    function endDrag() {
+        isDragging = false;
+    }
+
+    // 更新图片变换
+    function updateImageTransform() {
+        modalImage.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    }
+
+    // 重置图片状态
+    function resetImage() {
+        scale = 1;
+        translateX = 0;
+        translateY = 0;
+        updateImageTransform();
+    }
+</script>
+{% endblock %}

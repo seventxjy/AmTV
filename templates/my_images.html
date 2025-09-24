@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-8">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">我的插画库</h1>
+        <p class="text-gray-600">管理您生成的所有插画</p>
+    </div>
+    
+    <div class="flex justify-end mb-6">
+        <a href="{{ url_for('generate') }}" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors">
+            <i class="fa fa-plus mr-2"></i> 生成新插画
+        </a>
+    </div>
+    
+    {% if images.items %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for image in images.items %}
+        <div class="bg-white rounded-xl shadow-md overflow-hidden group relative">
+            <div class="h-48 overflow-hidden">
+                <img src="{{ image.url }}" alt="{{ image.prompt }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.href='{{ url_for('image_detail', image_id=image.id) }}'">
+
+                <!-- 操作按钮 - 鼠标悬停显示 -->
+                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-2">
+                    <a href="{{ url_for('download_image', image_id=image.id) }}" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full transition-colors" title="下载">
+                        <i class="fa fa-download"></i>
+                    </a>
+                    <form action="{{ url_for('delete_image', image_id=image.id) }}" method="post" onsubmit="return confirm('确定要删除这幅插画吗？')">
+                        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition-colors" title="删除">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="p-4">
+                <h3 class="font-medium text-gray-900 mb-1 line-clamp-1">{{ image.prompt[:30] + '...' }}</h3>
+                <p class="text-sm text-gray-500 mb-3">
+                    <i class="fa fa-calendar mr-1"></i> {{ image.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </p>
+                <a href="{{ url_for('generate') }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                    重新生成 <i class="fa fa-refresh ml-1"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 分页导航 -->
+    <div class="mt-8 flex justify-center">
+        <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+            <a href="{{ url_for('my_images', page=1) }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <i class="fas fa-home mr-1"></i> 首页
+            </a>
+            <a href="{{ url_for('my_images', page=images.prev_num) }}" class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 {% if not images.has_prev %}opacity-50 cursor-not-allowed{% endif %}">
+                <span class="sr-only">上一页</span>
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            {% for page_num in images.iter_pages() %}
+                {% if page_num %}
+                    {% if page_num == images.page %}
+                        <a href="{{ url_for('my_images', page=page_num) }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-600 text-sm font-medium text-white">
+                            {{ page_num }}
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('my_images', page=page_num) }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            {{ page_num }}
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                        ...
+                    </span>
+                {% endif %}
+            {% endfor %}
+            <a href="{{ url_for('my_images', page=images.next_num) }}" class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 {% if not images.has_next %}opacity-50 cursor-not-allowed{% endif %}">
+                <i class="fas fa-chevron-right"></i>
+                <span class="sr-only">下一页</span>
+            </a>
+            <a href="{{ url_for('my_images', page=images.pages) }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <i class="fas fa-end mr-1"></i> 末页
+            </a>
+        </nav>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-xl shadow-sm p-8 text-center">
+        <div class="text-gray-400 mb-4">
+            <i class="fa fa-picture-o text-6xl"></i>
+        </div>
+        <h3 class="text-xl font-medium text-gray-900 mb-2">您的插画库是空的</h3>
+        <p class="text-gray-500 mb-6">点击下方按钮生成第一幅插画，开始您的创作之旅</p>
+        <a href="{{ url_for('generate') }}" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg font-medium transition-colors inline-flex items-center">
+            <i class="fa fa-magic mr-2"></i> 生成插画
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

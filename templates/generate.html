@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}AI插画生成{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">AI插画生成</h1>
+        <p class="text-gray-600">输入关键词，让AI为您创作精美插画</p>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <!-- 生成结果区域 -->
+        {% if generated %}
+        <div class="text-center mb-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">生成的插画</h2>
+            <div class="bg-gray-100 p-4 rounded-lg">
+                <!-- 显示最新生成的图像 -->
+                <img src="{{ image_url }}" alt="生成的插画" class="max-w-full h-auto rounded-lg shadow-md"
+                     onerror="this.src='{{ url_for('static', filename='images/default_image.png') }}'">
+
+                <!-- 图像加载状态 -->
+                <div id="image-loading" class="hidden mt-3 text-blue-500">
+                    <i class="fa fa-spinner fa-spin mr-2"></i>加载中...
+                </div>
+            </div>
+            <p class="text-gray-600 mt-2">提示词: {{ positive_prompt }}</p>
+
+            <!-- 操作按钮 -->
+            <div class="mt-4 flex justify-center space-x-4">
+                <button id="save-image-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg font-medium transition-colors {% if button_disabled %}disabled opacity-50{% endif %}">
+                    <i class="fa fa-save mr-2"></i>保存到我的插画库
+                </button>
+                <button id="regenerate-btn" class="bg-gray-600 hover:bg-gray-700 text-white py-2 px-6 rounded-lg font-medium transition-colors {% if button_disabled %}disabled opacity-50{% endif %}">
+                    <i class="fa fa-refresh mr-2"></i>重新生成
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 表单区域 -->
+        <form id="generation-form" method="post" class="space-y-6">
+            <div>
+                <label for="positive_prompt" class="block text-sm font-medium text-gray-700 mb-1">
+                    正向提示词 <span class="text-red-500">*</span>
+                </label>
+                <textarea id="positive_prompt" name="positive_prompt" rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="描述您想要的插画内容，例如：美丽的动漫少女，阳光明媚的春天，细腻的光影效果">{{ positive_prompt }}</textarea>
+                <p class="text-xs text-gray-500 mt-1">用逗号分隔多个关键词，越详细的描述生成效果越好</p>
+            </div>
+
+            <div>
+                <label for="negative_prompt" class="block text-sm font-medium text-gray-700 mb-1">
+                    负向提示词
+                </label>
+                <textarea id="negative_prompt" name="negative_prompt" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="不希望出现在插画中的内容，例如：低质量，模糊，变形">{{ negative_prompt }}</textarea>
+                <p class="text-xs text-gray-500 mt-1">可选，用于排除不想要的特征</p>
+            </div>
+
+            <div>
+                <button type="submit" id="generate-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors">
+                    <i class="fa fa-magic mr-2"></i> 生成插画
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 提示词技巧区域 -->
+    <div class="mt-10">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">提示词技巧</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                <h3 class="font-medium text-blue-800 mb-2">正向提示词示例</h3>
+                <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• 高质量, 4K分辨率, 杰作, 细致的面部表情</li>
+                    <li>• 动漫风格, 水彩画, 柔和的色彩, 温暖的光线</li>
+                    <li>• 少女, 樱花树下, 夏季校服, 微笑, 阳光透过树叶</li>
+                </ul>
+            </div>
+            <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg">
+                <h3 class="font-medium text-red-800 mb-2">负向提示词示例</h3>
+                <ul class="text-sm text-red-700 space-y-1">
+                    <li>• 低质量, 模糊, 像素化, 扭曲的身体</li>
+                    <li>• 丑陋的面部, 变形的手, 多余的肢体</li>
+                    <li>• 糟糕的构图, 低分辨率, 水印, 文本</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript 交互 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('generation-form');
+        const generateBtn = document.getElementById('generate-btn');
+        const imageLoading = document.getElementById('image-loading');
+        const saveBtn = document.getElementById('save-image-btn');
+        const regenerateBtn = document.getElementById('regenerate-btn');
+
+        // 从模板获取转义后的提示词
+        const positivePrompt = {{ positive_prompt | tojson }};
+        const negativePrompt = {{ negative_prompt | tojson }};
+
+        // 表单提交处理
+        form.addEventListener('submit', function(e) {
+            // 显示加载状态
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i> 生成中...';
+
+            if (imageLoading) {
+                imageLoading.classList.remove('hidden');
+            }
+        });
+
+        // 保存图像按钮点击事件
+        if (saveBtn && !saveBtn.disabled) {
+            saveBtn.addEventListener('click', function() {
+                // 发送AJAX请求保存图像
+                fetch('{{ url_for('save_generated_image') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: positivePrompt,
+                        negative_prompt: negativePrompt
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('图像已成功保存到您的插画库！');
+                    } else {
+                        alert('保存失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('保存过程中发生错误');
+                });
+            });
+        }
+
+        // 重新生成按钮点击事件
+        if (regenerateBtn && !regenerateBtn.disabled) {
+            regenerateBtn.addEventListener('click', function() {
+                // 提交表单重新生成
+                form.submit();
+            });
+        }
+    });
+</script>
+{% endblock %}

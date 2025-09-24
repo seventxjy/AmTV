@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}用户画像 - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">用户画像</h1>
+        {% if message %}
+            <p class="text-gray-500">{{ message }}</p>
+        {% else %}
+            <p class="text-gray-500">根据您的评分，我们为您生成了以下标签偏好分析</p>
+        {% endif %}
+    </div>
+
+    {% if not message %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div class="bg-white rounded-xl shadow-md p-6 h-full">
+            <h2 class="text-xl font-bold text-gray-900 mb-6">标签偏好分布</h2>
+            <div class="h-[400px]" id="tagPreferenceBarChart"></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6 h-full">
+            <h2 class="text-xl font-bold text-gray-900 mb-6">标签推荐度气泡图</h2>
+            <div class="h-[400px]" id="tagPreferenceBubbleChart"></div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+        <h2 class="text-xl font-bold text-gray-900 mb-6">您的标签偏好详情</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {% for tag, score in top_tags %}
+            <div class="bg-gray-50 rounded-lg p-4 flex items-center justify-between">
+                <div>
+                    <h3 class="font-medium text-gray-900">{{ tag }}</h3>
+                    <div class="text-sm text-gray-500">
+                        推荐度: {{ score|round(2) }}
+                    </div>
+                </div>
+                <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full"
+                         style="width: {{ (score + 2) * 25 }}%;
+                                background-color: {{ 'rgba(49, 130, 206, 0.8)' if score >= 0 else 'rgba(229, 62, 62, 0.8)' }}">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-6">您的评分记录</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">动画名称</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">评分</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">标签</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for rating in user_ratings %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ rating.anime.name }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-500">
+                                <div class="flex text-yellow-400">
+                                    {% for i in range(1, 6) %}
+                                    <i class="fa fa-star{% if rating.score >= i %} text-yellow-500{% else %} text-gray-300{% endif %}"></i>
+                                    {% endfor %}
+                                </div>
+                                <span class="ml-2">{{ rating.score }}分</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% for tag in rating.anime.tags[:3] %}
+                            <span class="px-2 py-1 bg-gray-100 rounded-full text-xs">{{ tag.name }}</span>
+                            {% endfor %}
+                            {% if rating.anime.tags|length > 3 %}
+                            <span class="text-gray-500">...</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ECharts 库引入 -->
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 准备标签数据
+        const tagData = [
+            {% for tag, score in top_tags %}
+            {
+                name: '{{ tag }}',
+                value: {{ score|default(0) }}
+            },
+            {% endfor %}
+        ];
+
+        // 渲染左侧柱状图
+        const barChart = echarts.init(document.getElementById('tagPreferenceBarChart'));
+        const barOption = {
+            title: {
+                text: '您的标签偏好分析',
+                subtext: '基于您的评分记录生成',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            legend: {
+                data: tagData.map(item => item.name),
+                orient: 'vertical',
+                left: 'left'
+            },
+            toolbox: {
+                show: true,
+                feature: {
+                    mark: true,
+                    dataView: true,
+                    restore: true,
+                    saveAsImage: true
+                }
+            },
+            xAxis: {
+                type: 'category',
+                data: tagData.map(item => item.name),
+                axisTick: {
+                    alignWithLabel: true
+                }
+            },
+            yAxis: {
+                type: 'value',
+                min: -2,
+                max: 2
+            },
+            series: [
+                {
+                    name: '标签推荐度',
+                    type: 'bar',
+                    data: tagData.map(item => item.value),
+                    itemStyle: {
+                        color: function(params) {
+                            return params.value >= 0 ? '#3182ce' : '#e53e3e';
+                        },
+                        borderRadius: [4, 4, 0, 0]
+                    },
+                    barWidth: '60%',
+                    emphasis: {
+                        barWidth: '70%'
+                    }
+                }
+            ]
+        };
+        barChart.setOption(barOption);
+
+
+        // 渲染右侧随机分布气泡图
+        const bubbleChart = echarts.init(document.getElementById('tagPreferenceBubbleChart'));
+
+        // 为每个标签生成随机位置
+        const generateRandomPosition = () => {
+            // 在图表内随机生成位置，边缘留白比例调整为10%，允许更多重叠
+            const margin = 0.1;
+            return {
+                x: margin + Math.random() * (1 - 2 * margin),
+                y: margin + Math.random() * (1 - 2 * margin)
+            };
+        };
+
+        // 计算标签数据中推荐度绝对值的最大值和最小值
+        const absoluteValues = tagData.map(item => Math.abs(item.value));
+        const maxAbsValue = Math.max(...absoluteValues);
+        const minAbsValue = Math.min(...absoluteValues);
+        
+        // 准备气泡图数据（使用相对大小）
+        const bubbleData = tagData.map(item => {
+            // 计算相对比例 (0-1)
+            const relativeRatio = maxAbsValue > minAbsValue 
+                ? (Math.abs(item.value) - minAbsValue) / (maxAbsValue - minAbsValue)
+                : 0.5; // 如果所有值相同，使用中间大小
+                
+            // 将相对比例映射到气泡大小范围 (20-80)
+            const size = 20 + relativeRatio * 60;
+            const position = generateRandomPosition();
+
+            return {
+                name: item.name,
+                value: [position.x, position.y, item.value, size], // x, y, 推荐度, 大小
+                itemStyle: {
+                    color: item.value >= 0 ? 'rgba(49, 130, 206, 0.6)' : 'rgba(229, 62, 62, 0.6)'
+                }
+            };
+        });
+
+        const bubbleOption = {
+            title: {
+                text: '标签推荐度气泡图',
+                subtext: '气泡大小表示推荐度相对值，颜色表示正负',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: function(params) {
+                    return `标签: ${params.name}<br>推荐度: ${params.value[2].toFixed(2)}`;
+                }
+            },
+            legend: {
+                data: ['正推荐度', '负推荐度'],
+                orient: 'horizontal',
+                bottom: '10%',
+                left: 'center',
+                itemWidth: 12,
+                itemHeight: 12,
+                formatter: function(name) {
+                    return name;
+                },
+                itemStyle: {
+                    color: function(params) {
+                        return params === '正推荐度' ? 'rgba(49, 130, 206, 0.6)' : 'rgba(229, 62, 62, 0.6)';
+                    }
+                }
+            },
+            toolbox: {
+                show: true,
+                feature: {
+                    mark: true,
+                    dataView: true,
+                    restore: true,
+                    saveAsImage: true
+                }
+            },
+            xAxis: {
+                type: 'value',
+                min: 0,
+                max: 1,
+                show: false
+            },
+            yAxis: {
+                type: 'value',
+                min: 0,
+                max: 1,
+                show: false
+            },
+            series: [
+                {
+                    name: '标签推荐度',
+                    type: 'scatter',
+                    data: bubbleData,
+                    symbolSize: function(params) {
+                        return params[3]; // 使用第四个值作为气泡大小
+                    },
+                    label: {
+                        show: true,
+                        formatter: function(params) {
+                            return params.name;
+                        },
+                        position: 'inside',
+                        color: '#333',
+                        fontSize: 12,
+                        fontWeight: 'bold'
+                    },
+                    emphasis: {
+                        scale: true,
+                        label: {
+                            show: true,
+                            fontSize: 14
+                        }
+                    }
+                }
+            ]
+        };
+
+        bubbleChart.setOption(bubbleOption);
+
+        // 窗口大小变化时重新渲染图表
+        window.addEventListener('resize', function() {
+            barChart.resize();
+            bubbleChart.resize();
+        });
+    });
+</script>
+{% endblock %}

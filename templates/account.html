@@ -1,0 +1,92 @@
+<!-- templates/account.html -->
+{% extends "base.html" %}
+
+{% block title %}我的账号 - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div class="flex items-center mb-6">
+            <div class="h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center text-primary text-2xl mr-4">
+                <span class="text-xl font-bold">{{ user.username[0] }}</span>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">{{ user.username }}</h2>
+                <p class="text-gray-500">会员编号: {{ user.id }}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">账号信息</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-500">用户名</span>
+                        <span class="font-medium">{{ user.username }}</span>
+                    </div>
+                    <!-- 移除注册时间行 -->
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-500">评分数量</span>
+                        <span class="font-medium">{{ user.ratings|length }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">快速操作</h3>
+                <div class="space-y-3">
+                    <a href="{{ url_for('mypage') }}" class="block bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md transition-colors">
+                        <i class="fa fa-star mr-2"></i> 我的评分
+                    </a>
+                    <a href="{{ url_for('user_profile') }}" class="block bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md transition-colors">
+                        <i class="fa fa-user mr-2"></i> 用户画像
+                    </a>
+                    <a href="{{ url_for('my_images') }}" class="block bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md transition-colors">
+                        <i class="fa fa-image mr-2"></i> 我的插画
+                    </a>
+                    <a href="{{ url_for('my_comments') }}" class="block bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md transition-colors">
+                        <i class="fa fa-image mr-2"></i> 我的评论
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="block bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-md transition-colors">
+                        <i class="fa fa-sign-out mr-2"></i> 退出登录
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">修改用户名</h3>
+            <form method="POST" action="{{ url_for('update_account') }}">
+                <input type="hidden" name="action" value="update_username">
+                <div class="mb-4">
+                    <label for="new_username" class="block text-sm font-medium text-gray-700 mb-1">新用户名</label>
+                    <input type="text" id="new_username" name="new_username" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="输入新用户名">
+                </div>
+                <button type="submit" class="w-full bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors">
+                    <i class="fa fa-pencil mr-1"></i> 修改用户名
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">修改密码</h3>
+            <form method="POST" action="{{ url_for('update_account') }}">
+                <input type="hidden" name="action" value="update_password">
+                <div class="mb-3">
+                    <label for="old_password" class="block text-sm font-medium text-gray-700 mb-1">当前密码</label>
+                    <input type="password" id="old_password" name="old_password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="输入当前密码">
+                </div>
+                <div class="mb-4">
+                    <label for="new_password" class="block text-sm font-medium text-gray-700 mb-1">新密码</label>
+                    <input type="password" id="new_password" name="new_password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" placeholder="输入新密码">
+                </div>
+                <button type="submit" class="w-full bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors">
+                    <i class="fa fa-lock mr-1"></i> 修改密码
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

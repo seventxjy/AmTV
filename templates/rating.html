@@ -1,0 +1,341 @@
+<!-- templates/rating.html -->
+{% extends "base.html" %}
+
+{% block title %}动画评分{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fa fa-search text-gray-400"></i>
+        </div>
+        <form method="GET" action="{{ url_for('rating') }}" class="max-w-lg mx-auto">
+            <input type="text" name="search" value="{{ search_query }}"
+                class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                placeholder="搜索动画名称">
+        </form>
+    </div>
+</div>
+
+<!-- 评分成功提示 -->
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="fixed top-20 right-4 z-50 animate-fade-in">
+            {% for message in messages %}
+                <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded shadow-md flex items-center">
+                    <i class="fa fa-check-circle text-green-500 text-xl mr-3"></i>
+                    <span class="text-green-800 font-medium">{{ message }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+{% if animes %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for anime in animes %}
+            {% set rating_count = anime.ratings|length %}
+            {% set avg_rating = (anime.ratings|sum(attribute='score') / rating_count) if rating_count > 0 else 0 %}
+            {% set user_rating = user_ratings.get(anime.id) %}
+
+            <div class="bg-white rounded-xl shadow-md overflow-hidden transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                <div class="h-48 relative">
+                    {% if anime.image_url %}
+                        <img src="{{ anime.image_url }}" alt="{{ anime.name }}" class="lazy w-full h-full object-cover" data-src="{{ anime.image_url }}">
+                    {% else %}
+                        <div class="absolute inset-0 flex items-center justify-center bg-gray-200">
+                            <i class="fa fa-picture-o text-gray-400 text-6xl"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="p-5">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-semibold text-gray-900 truncate">{{ anime.name }}</h3>
+                        {% if rating_count > 0 %}
+                            <div class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                <i class="fa fa-star mr-0.5"></i> {{ "%.1f"|format(avg_rating) }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex items-center text-sm text-gray-500 mb-3">
+                        {% if rating_count > 0 %}
+                            <span class="ml-auto text-xs text-gray-400">({{ rating_count }}人评分)</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- 评分按钮 -->
+                    <button
+                        class="w-full inline-flex items-center justify-center px-3 py-2 border border-primary text-primary rounded-md text-sm font-medium hover:bg-primary hover:text-white transition-colors duration-200 transform hover:scale-105 active:scale-95"
+                        onclick="openRatingModal({{ anime.id }}, '{{ anime.name }}', {{ user_rating.id if user_rating else 'null' }})"
+                    >
+                        {% if user_rating %}
+                            <i class="fa fa-refresh mr-1"></i> 修改评分
+                        {% else %}
+                            <i class="fa fa-star mr-1"></i> 评分
+                        {% endif %}
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- 分页导航 -->
+    <div class="mt-8 flex justify-center">
+        <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+            <a href="{{ url_for('rating', page=1, search=search_query) }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                首页
+            </a>
+            <a href="{{ url_for('rating', page=pagination.prev_num, search=search_query) }}" class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 {% if not pagination.has_prev %}opacity-50 cursor-not-allowed{% endif %}">
+                <span class="sr-only">上一页</span>
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            {% for page_num in pagination.iter_pages() %}
+                {% if page_num %}
+                    {% if page_num == pagination.page %}
+                        <a href="{{ url_for('rating', page=page_num, search=search_query) }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-primary text-sm font-medium text-white">
+                            {{ page_num }}
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('rating', page=page_num, search=search_query) }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            {{ page_num }}
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                        ...
+                    </span>
+                {% endif %}
+            {% endfor %}
+            <a href="{{ url_for('rating', page=pagination.next_num, search=search_query) }}" class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 {% if not pagination.has_next %}opacity-50 cursor-not-allowed{% endif %}">
+                <i class="fas fa-chevron-right"></i>
+                <span class="sr-only">下一页</span>
+            </a>
+            <a href="{{ url_for('rating', page=pagination.pages, search=search_query) }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                末页
+            </a>
+        </nav>
+    </div>
+{% else %}
+    <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+        <div class="text-gray-400 mb-4">
+            <i class="fa fa-film text-5xl"></i>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">没有找到动画</h3>
+        <p class="text-sm text-gray-500">尝试使用不同的搜索关键词或检查拼写</p>
+    </div>
+{% endif %}
+
+<!-- 评分弹窗 -->
+<div id="ratingModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-900" id="modalTitle">为《动画名称》评分</h3>
+            <button onclick="closeRatingModal()" class="text-gray-500 hover:text-gray-700">
+                <i class="fa fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <form id="ratingForm" method="POST" action="{{ url_for('submit_rating') }}">
+            <input type="hidden" id="animeId" name="anime_id" value="">
+            <input type="hidden" id="ratingId" name="rating_id" value="">
+            <input type="hidden" name="page" value="{{ pagination.page }}">
+            <input type="hidden" name="search" value="{{ search_query }}">
+
+            <div class="space-y-4">
+                <!-- 作画评分 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">作画</label>
+                    <div class="flex items-center space-x-2">
+                        {% for i in range(1, 6) %}
+                            <label class="cursor-pointer flex-1 text-center">
+                                <input type="radio" name="animation" value="{{ i }}" class="hidden peer" required>
+                                <div class="border-2 rounded-md p-3 peer-checked:border-primary peer-checked:bg-primary/10 transition-colors">
+                                    {{ i }}分
+                                </div>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- 演出评分 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">演出</label>
+                    <div class="flex items-center space-x-2">
+                        {% for i in range(1, 6) %}
+                            <label class="cursor-pointer flex-1 text-center">
+                                <input type="radio" name="direction" value="{{ i }}" class="hidden peer" required>
+                                <div class="border-2 rounded-md p-3 peer-checked:border-primary peer-checked:bg-primary/10 transition-colors">
+                                    {{ i }}分
+                                </div>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- 配音评分 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">配音</label>
+                    <div class="flex items-center space-x-2">
+                        {% for i in range(1, 6) %}
+                            <label class="cursor-pointer flex-1 text-center">
+                                <input type="radio" name="voice_acting" value="{{ i }}" class="hidden peer" required>
+                                <div class="border-2 rounded-md p-3 peer-checked:border-primary peer-checked:bg-primary/10 transition-colors">
+                                    {{ i }}分
+                                </div>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- 音乐评分 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">音乐</label>
+                    <div class="flex items-center space-x-2">
+                        {% for i in range(1, 6) %}
+                            <label class="cursor-pointer flex-1 text-center">
+                                <input type="radio" name="music" value="{{ i }}" class="hidden peer" required>
+                                <div class="border-2 rounded-md p-3 peer-checked:border-primary peer-checked:bg-primary/10 transition-colors">
+                                    {{ i }}分
+                                </div>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- 剧情评分 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">剧情</label>
+                    <div class="flex items-center space-x-2">
+                        {% for i in range(1, 6) %}
+                            <label class="cursor-pointer flex-1 text-center">
+                                <input type="radio" name="story" value="{{ i }}" class="hidden peer" required>
+                                <div class="border-2 rounded-md p-3 peer-checked:border-primary peer-checked:bg-primary/10 transition-colors">
+                                    {{ i }}分
+                                </div>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- 总分预览 -->
+                <div class="bg-gray-50 p-3 rounded-md">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-700">预计总分</span>
+                        <span class="text-lg font-bold text-primary" id="totalScore">0.0</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">计算公式: 0.4×演出 + 0.2×作画 + 0.2×剧情 + 0.1×音乐 + 0.1×配音</p>
+                </div>
+
+                <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors">
+                    <i class="fa fa-check mr-1"></i> 提交评分
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 图片懒加载
+        const lazyImages = document.querySelectorAll('img.lazy');
+        if ('IntersectionObserver' in window) {
+            const imageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const image = entry.target;
+                        image.src = image.dataset.src;
+                        image.classList.remove('lazy');
+                        imageObserver.unobserve(image);
+                    }
+                });
+            });
+            lazyImages.forEach(image => {
+                imageObserver.observe(image);
+            });
+        }
+
+        // 评分相关
+        const ratingForm = document.getElementById('ratingForm');
+        const radioInputs = ratingForm.querySelectorAll('input[type="radio"]');
+
+        // 计算总分
+        function calculateTotalScore() {
+            const animation = parseInt(document.querySelector('input[name="animation"]:checked')?.value || 0);
+            const direction = parseInt(document.querySelector('input[name="direction"]:checked')?.value || 0);
+            const voiceActing = parseInt(document.querySelector('input[name="voice_acting"]:checked')?.value || 0);
+            const music = parseInt(document.querySelector('input[name="music"]:checked')?.value || 0);
+            const story = parseInt(document.querySelector('input[name="story"]:checked')?.value || 0);
+
+            // 加权计算
+            const total = (0.4 * direction) + (0.2 * animation) + (0.2 * story) + (0.1 * music) + (0.1 * voiceActing);
+            document.getElementById('totalScore').textContent = total.toFixed(1);
+        }
+
+        // 监听评分变化，实时计算总分
+        radioInputs.forEach(input => {
+            input.addEventListener('change', calculateTotalScore);
+        });
+
+        // 评分成功提示自动消失
+        setTimeout(function() {
+            const messages = document.querySelector('.animate-fade-in');
+            if (messages) {
+                messages.style.opacity = '0';
+                setTimeout(function() {
+                    messages.style.display = 'none';
+                }, 500);
+            }
+        }, 3000);
+    });
+
+    // 打开评分弹窗
+    function openRatingModal(animeId, animeName, ratingId = null) {
+        document.getElementById('modalTitle').textContent = `为《${animeName}》评分`;
+        document.getElementById('animeId').value = animeId;
+        document.getElementById('ratingId').value = ratingId || '';
+
+        // 重置表单
+        document.getElementById('ratingForm').reset();
+        document.getElementById('totalScore').textContent = '0.0';
+
+        // 如果是修改评分，加载已有评分
+        if (ratingId) {
+            // 这里需要从服务器获取已有评分数据
+            fetch(`/get_rating/${ratingId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.querySelector(`input[name="animation"][value="${data.rating.animation}"]`).checked = true;
+                        document.querySelector(`input[name="direction"][value="${data.rating.direction}"]`).checked = true;
+                        document.querySelector(`input[name="voice_acting"][value="${data.rating.voice_acting}"]`).checked = true;
+                        document.querySelector(`input[name="music"][value="${data.rating.music}"]`).checked = true;
+                        document.querySelector(`input[name="story"][value="${data.rating.story}"]`).checked = true;
+
+                        // 计算总分
+                        const total = (0.4 * data.rating.direction) + (0.2 * data.rating.animation) +
+                                     (0.2 * data.rating.story) + (0.1 * data.rating.music) +
+                                     (0.1 * data.rating.voice_acting);
+                        document.getElementById('totalScore').textContent = total.toFixed(1);
+                    }
+                });
+        }
+
+        document.getElementById('ratingModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // 防止背景滚动
+    }
+
+    // 关闭评分弹窗
+    function closeRatingModal() {
+        document.getElementById('ratingModal').classList.add('hidden');
+        document.body.style.overflow = ''; // 恢复滚动
+    }
+
+    // 点击弹窗外部关闭
+    document.getElementById('ratingModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeRatingModal();
+        }
+    });
+</script>
+{% endblock %}

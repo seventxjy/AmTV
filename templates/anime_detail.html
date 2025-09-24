@@ -1,0 +1,367 @@
+<!-- templates/anime_detail.html -->
+{% extends "base.html" %}
+
+{% block title %}{{ anime.name }} - 动画详情{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- 动画标题 -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">{{ anime.name }}</h1>
+    </div>
+
+    <div class="flex flex-col lg:flex-row gap-6 items-start">
+        <!-- 左侧：动画图片和基本信息 -->
+        <div class="lg:w-1/4 w-full">
+            <!-- 动画图片 -->
+            <div class="rounded-xl overflow-hidden shadow-lg mb-4">
+                {% if anime.image_url %}
+                    <img src="{{ anime.image_url }}" alt="{{ anime.name }}" class="w-full h-auto object-cover">
+                {% else %}
+                    <div class="w-full h-64 bg-gray-200 flex items-center justify-center">
+                        <i class="fa fa-picture-o text-gray-400 text-5xl"></i>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- 其他动画信息 -->
+            <div class="bg-white rounded-lg shadow-sm p-4 sticky top-24">
+                <h2 class="text-lg font-semibold text-gray-900 mb-3">基本信息</h2>
+                <div class="space-y-3">
+                    <p class="flex flex-col">
+                        <span class="text-gray-500 text-sm">标签:</span>
+                        <span class="text-gray-700 mt-1">
+                            {% for tag in anime.tags[:3] %}
+                                <span class="px-2 py-1 bg-gray-100 rounded-full text-sm mr-2">{{ tag.name }}</span>
+                            {% endfor %}
+                            {% if anime.tags|length > 3 %}
+                                <span class="text-gray-500">更多...</span>
+                            {% endif %}
+                        </span>
+                    </p>
+                    <p class="flex items-center">
+                        <span class="text-gray-500 w-20">评分人数:</span>
+                        <span class="text-gray-700">
+                            {% if rating_count > 0 %}
+                                {{ rating_count }}人
+                            {% else %}
+                                还无人评分
+                            {% endif %}
+                        </span>
+                    </p>
+                    <!-- 可以添加更多信息项 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：标签可视化图表、评分雷达图和评论区 -->
+        <div class="lg:w-3/4 w-full space-y-5">
+            <!-- 标签分布图表 -->
+            <div class="bg-white rounded-xl shadow-md p-5 h-full">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">标签分布</h2>
+                <div class="h-[350px] w-full" id="tagChart"></div>
+            </div>
+
+            <!-- 评分雷达图 -->
+            <div class="bg-white rounded-xl shadow-md p-5 h-full">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">动画评分维度分析(Rating1.0)</h2>
+                <div class="h-[350px] w-full" id="ratingRadarChart"></div>
+            </div>
+
+            <!-- 评论区 -->
+            <div class="bg-white rounded-xl shadow-md p-5 h-full mb-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">用户评论</h2>
+                <!-- 评论输入框 -->
+                <div class="mb-6">
+                    <form id="commentForm" method="POST" action="{{ url_for('submit_comment') }}">
+                        <input type="hidden" name="anime_id" value="{{ anime.id }}">
+                        <textarea
+                            class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                            rows="4"
+                            name="content"
+                            placeholder="写下你的评论..."
+                            required></textarea>
+                        <button type="submit" class="mt-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors">
+                            发布评论
+                        </button>
+                    </form>
+                </div>
+
+<!-- 评论列表 -->
+<div class="space-y-4">
+    {% for comment in comments %}
+    <div class="p-4 border-b border-gray-100" id="comment-{{ comment.id }}">
+        <div class="flex items-center mb-2">
+            <div>
+                <h4 class="font-medium text-gray-900">{{ comment.user.username }}</h4>
+                <p class="text-sm text-gray-500">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            </div>
+        </div>
+        <p class="text-gray-700 mb-3">{{ comment.content }}</p>
+
+        <!-- 回复按钮 -->
+        <button class="text-primary text-sm hover:text-primary/80 mb-3 reply-btn" data-comment-id="{{ comment.id }}">
+            <i class="fa fa-reply mr-1"></i> 回复
+        </button>
+
+        <!-- 回复表单 (默认隐藏) -->
+        <div class="reply-form hidden mb-4 pl-4 border-l-2 border-gray-200" id="reply-form-{{ comment.id }}">
+            <textarea
+                class="w-full p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                rows="2"
+                placeholder="写下你的回复..."></textarea>
+            <div class="mt-2 flex justify-end">
+                <button class="px-3 py-1 bg-primary text-white text-sm rounded-md hover:bg-primary/90 transition-colors submit-reply" data-comment-id="{{ comment.id }}">
+                    回复
+                </button>
+            </div>
+        </div>
+
+        <!-- 显示该评论的所有回复 -->
+        {% if comment.replies %}
+        <div class="replies pl-4 border-l-2 border-gray-200 space-y-3">
+            {% for reply in comment.replies %}
+            <div class="p-2 bg-gray-50 rounded-md">
+                <div class="flex items-center mb-1">
+                    <span class="font-medium text-gray-900 text-sm">{{ reply.user.username }}</span>
+                    <span class="mx-2 text-gray-300 text-xs">•</span>
+                    <span class="text-xs text-gray-500">{{ reply.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                <p class="text-gray-700 text-sm">{{ reply.content }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <!-- 如果没有评论 -->
+    <div class="p-4 text-center text-gray-500">
+        <i class="fa fa-comment-o text-2xl mb-2"></i>
+        <p>还没有评论，快来发表第一条评论吧~</p>
+    </div>
+    {% endfor %}
+</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ECharts 库引入 -->
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 准备标签数据 - 从后端获取前10的标签数据
+        const tagData = [
+            {% for tag in top_tags %}
+            {
+                name: '{{ tag.name }}',
+                value: {{ tag.count|default(0) }}
+            },
+            {% endfor %}
+        ];
+
+        // 初始化标签分布图表实例
+        const tagChart = echarts.init(document.getElementById('tagChart'));
+
+        // 配置玫瑰图选项
+        const tagOption = {
+            title: {
+                text: '{{ anime.name }} 标签分布',
+                subtext: '前10个标签的数量分布',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: '{a} <br/>{b} : {c} ({d}%)'
+            },
+            legend: {
+                orient: 'vertical',
+                left: 'left',
+                data: tagData.map(item => item.name)
+            },
+            toolbox: {
+                show: true,
+                feature: {
+                    mark: true,
+                    saveAsImage: true
+                }
+            },
+            series: [
+                {
+                    name: '标签分布',
+                    type: 'pie',
+                    radius: ['30%', '75%'],
+                    center: ['50%', '60%'],
+                    roseType: 'area',
+                    itemStyle: {
+                        borderRadius: 8
+                    },
+                    label: {
+                        show: true,
+                        formatter: '{b}: {c}'
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: '18',
+                            fontWeight: 'bold'
+                        }
+                    },
+                    labelLine: {
+                        show: true
+                    },
+                    data: tagData
+                }
+            ]
+        };
+
+        // 使用配置项渲染标签图表
+        tagChart.setOption(tagOption);
+
+        // 初始化评分雷达图
+        const radarChart = echarts.init(document.getElementById('ratingRadarChart'));
+
+        // 准备评分数据（从后端获取的各维度平均值）
+        const ratingData = {
+            overall: {{ avg_rating|default(0) }},         // 总评分
+            animation: {{ avg_animation|default(0) }},    // 作画平均分
+            direction: {{ avg_direction|default(0) }},    // 演出平均分
+            story: {{ avg_story|default(0) }},            // 剧情平均分
+            music: {{ avg_music|default(0) }},            // 音乐平均分
+            voice_acting: {{ avg_voice_acting|default(0) }}  // 配音平均分
+        };
+
+        // 所有动画的平均六维分数（从后端获取）
+        const allAnimeAvgData = {
+            overall: {{ all_anime_avg.overall|default(0) }},
+            animation: {{ all_anime_avg.animation|default(0) }},
+            direction: {{ all_anime_avg.direction|default(0) }},
+            story: {{ all_anime_avg.story|default(0) }},
+            music: {{ all_anime_avg.music|default(0) }},
+            voice_acting: {{ all_anime_avg.voice_acting|default(0) }}
+        };
+
+        // 配置雷达图选项
+        const radarOption = {
+            title: {
+                text: '评分维度分布',
+                subtext: '各维度平均得分 (满分5分)',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'item'
+            },
+            legend: {
+                orient: 'vertical',
+                left: 10,
+                data: ['当前动画', '所有动画平均']  // 更新图例
+            },
+            radar: {
+                indicator: [
+                    { name: '总评分', max: 5 },
+                    { name: '作画', max: 5 },
+                    { name: '演出', max: 5 },
+                    { name: '剧情', max: 5 },
+                    { name: '音乐', max: 5 },
+                    { name: '配音', max: 5 }
+                ],
+                splitArea: {
+                    areaStyle: {
+                        color: ['rgba(255,255,255,0.5)', 'rgba(200,200,200,0.5)']
+                    }
+                }
+            },
+            series: [
+                {
+                    name: '当前动画',
+                    type: 'radar',
+                    symbolSize: 8,
+                    lineStyle: {
+                        width: 3,
+                        color: 'rgba(22, 93, 255, 0.8)' // 使用主题色
+                    },
+                    areaStyle: {
+                        color: 'rgba(22, 93, 255, 0.3)' // 使用主题色的半透明版本
+                    },
+                    data: [
+                        {
+                            value: [
+                                ratingData.overall,
+                                ratingData.animation,
+                                ratingData.direction,
+                                ratingData.story,
+                                ratingData.music,
+                                ratingData.voice_acting
+                            ],
+                            name: '当前动画'
+                        }
+                    ]
+                },
+                {
+                    name: '所有动画平均',
+                    type: 'radar',
+                    symbolSize: 6,
+                    lineStyle: {
+                        width: 2,
+                        color: 'rgba(255, 99, 132, 0.8)', // 红色系作为对比
+                        type: 'dashed'  // 虚线样式区分
+                    },
+                    areaStyle: {
+                        color: 'rgba(255, 99, 132, 0.1)' // 半透明红色
+                    },
+                    data: [
+                        {
+                            value: [
+                                allAnimeAvgData.overall,
+                                allAnimeAvgData.animation,
+                                allAnimeAvgData.direction,
+                                allAnimeAvgData.story,
+                                allAnimeAvgData.music,
+                                allAnimeAvgData.voice_acting
+                            ],
+                            name: '所有动画平均'
+                        }
+                    ]
+                }
+            ],
+            animation: true
+        };
+
+        // 使用配置项渲染雷达图
+        radarChart.setOption(radarOption);
+
+        // 窗口大小变化时重绘图表
+        window.addEventListener('resize', function() {
+            tagChart.resize();
+            radarChart.resize();
+        });
+
+        // 回复按钮交互
+        document.querySelectorAll('.reply-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const commentId = this.getAttribute('data-comment-id');
+                const replyForm = document.getElementById(`reply-form-${commentId}`);
+                replyForm.classList.toggle('hidden');
+            });
+        });
+
+        // 提交回复
+        document.querySelectorAll('.submit-reply').forEach(button => {
+            button.addEventListener('click', function() {
+                const commentId = this.getAttribute('data-comment-id');
+                const replyForm = document.getElementById(`reply-form-${commentId}`);
+                const textarea = replyForm.querySelector('textarea');
+                const content = textarea.value.trim();
+
+                if (content) {
+                    // 这里应该有AJAX请求提交回复
+                    alert(`回复将提交: ${content}`);
+                    textarea.value = '';
+                    replyForm.classList.add('hidden');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

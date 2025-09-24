@@ -1,0 +1,438 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %} AmTV {% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#FF7D00',
+                        dark: '#1F2937',
+                        light: '#F9FAFB'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .animate-fade-in {
+                animation: fadeIn 0.5s ease-in-out;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            .pulse-ring {
+                box-shadow: 0 0 0 rgba(22, 93, 255, 0.4);
+                animation: pulse 2s infinite;
+            }
+            @keyframes pulse {
+                0% {
+                    box-shadow: 0 0 0 0 rgba(22, 93, 255, 0.4);
+                }
+                70% {
+                    box-shadow: 0 0 0 15px rgba(22, 93, 255, 0);
+                }
+                100% {
+                    box-shadow: 0 0 0 0 rgba(22, 93, 255, 0);
+                }
+            }
+            .animate-slide-up {
+                animation: slideUp 0.3s ease-out forwards;
+            }
+            @keyframes slideUp {
+                from {
+                    transform: translateY(10px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+            .animate-rotate {
+                animation: rotate 2s linear infinite;
+            }
+            @keyframes rotate {
+                from {
+                    transform: rotate(0deg);
+                }
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                <div class="flex-shrink-0 flex items-center">
+                    <i class="fa fa-play-circle text-primary text-2xl mr-2"></i>
+                    <span class="font-bold text-xl text-dark">AmTV</span>
+                </div>
+                <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                    <!-- 动画主页链接 - 动态高亮 -->
+                    <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}border-primary text-dark{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                        <i class="fa fa-home mr-1"></i> 动画主页
+                    </a>
+                    <!-- 动画评分链接 - 动态高亮 -->
+                    <a href="{{ url_for('rating') }}" class="{% if request.endpoint == 'rating' %}border-primary text-dark{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                        <i class="fa fa-star mr-1"></i> 动画评分
+                    </a>
+                    <!-- 动画推荐链接 - 动态高亮 -->
+                    <a href="{{ url_for('recommend') }}" class="{% if request.endpoint == 'recommend' %}border-primary text-dark{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                        <i class="fa fa-thumbs-up mr-1"></i> 动画推荐
+                    </a>
+                    <a href="{{ url_for('gallery') }}" class="{% if request.endpoint == 'gallery' %}border-primary text-dark{% else %}border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                        <i class="fa fa-image mr-1"></i> 插画生成
+                    </a>
+                </div>
+            </div>
+<div class="navbar-right">
+    {% if session.username %}
+        <a href="{{ url_for('account') }}" class="flex items-center">
+            <div class="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary mr-2">
+                <span class="text-sm font-medium">{{ session.username[0] }}</span>
+            </div>
+            <span class="text-sm font-medium text-gray-700">{{ session.username }}</span>
+        </a>
+        <a href="{{ url_for('logout') }}" class="text-gray-500 hover:text-gray-700 ml-4">
+            <i class="fa fa-sign-out"></i>
+        </a>
+    {% else %}
+        <a href="{{ url_for('login') }}" class="text-gray-500 hover:text-gray-700 mr-4">
+            <i class="fa fa-user mr-1"></i> 登录
+        </a>
+    {% endif %}
+</div>
+            </div>
+        </div>
+
+        <!-- 移动端菜单 -->
+        <div class="sm:hidden" id="mobile-menu">
+            <div class="pt-2 pb-3 space-y-1">
+                <a href="{{ url_for('index') }}" class="bg-primary/10 text-primary block pl-3 pr-4 py-2 border-l-4 border-primary text-base font-medium">动画主页</a>
+                <a href="{{ url_for('rating') }}" class="border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">动画评分</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                        <div class="rounded-md bg-green-50 p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-green-800">
+                                        {{ message }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center">
+                        <i class="fa fa-play-circle text-primary text-xl mr-2"></i>
+                        <span class="font-bold text-lg text-dark">AmTV</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2">发现精彩动画，分享评分体验</p>
+                </div>
+<!--                <div class="flex space-x-6">-->
+<!--                    <a href="#" class="text-gray-400 hover:text-primary">-->
+<!--                        <i class="fa fa-github text-xl"></i>-->
+<!--                    </a>-->
+<!--                    <a href="#" class="text-gray-400 hover:text-primary">-->
+<!--                        <i class="fa fa-twitter text-xl"></i>-->
+<!--                    </a>-->
+<!--                    <a href="#" class="text-gray-400 hover:text-primary">-->
+<!--                        <i class="fa fa-instagram text-xl"></i>-->
+<!--                    </a>-->
+<!--                </div>-->
+            </div>
+            <div class="mt-8 pt-8 border-t border-gray-200 text-center text-sm text-gray-500">
+                <p>© 2025 AmTV. 保留所有权利.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 音乐模块 -->
+    <div id="music-player" class="fixed bottom-6 right-6 z-50 transition-all duration-300">
+        <!-- 音乐控制按钮 -->
+        <button id="music-toggle" class="w-16 h-16 rounded-full bg-primary text-white shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all transform hover:scale-105 focus:outline-none">
+            <div class="relative w-8 h-8">
+                <i class="fa fa-music text-2xl absolute inset-0 flex items-center justify-center"></i>
+                <div class="hidden absolute inset-0 rounded-full border-2 border-white/30 border-t-transparent" id="spin-indicator"></div>
+            </div>
+        </button>
+
+        <!-- 音乐列表 (默认隐藏) -->
+        <div id="music-list" class="opacity-0 invisible absolute bottom-full right-0 mb-3 w-72 bg-white rounded-xl shadow-2xl p-4 transform translate-y-4 transition-all duration-300">
+            <h4 class="text-sm font-semibold text-gray-900 mb-3 flex justify-between items-center">
+                <span class="flex items-center">
+                    <i class="fa fa-music text-primary mr-2"></i>背景音乐
+                </span>
+                <span id="now-playing" class="text-xs text-primary px-2 py-0.5 bg-primary/10 rounded-full">未播放</span>
+            </h4>
+            <ul class="space-y-1 max-h-64 overflow-y-auto pr-1">
+                <!-- 音乐列表项 -->
+                <li>
+                    <button class="music-item w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-50 text-sm flex justify-between items-center transition-colors duration-200"
+                            data-src="{{ url_for('static', filename='music/oblivious.mp3') }}">
+                        <span>oblivious</span>
+                        <i class="fa fa-play text-gray-400 transition-all duration-200"></i>
+                    </button>
+                </li>
+                <li>
+                    <button class="music-item w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-50 text-sm flex justify-between items-center transition-colors duration-200"
+                            data-src="{{ url_for('static', filename='music/东京不太热.mp3') }}">
+                        <span>东京不太热</span>
+                        <i class="fa fa-play text-gray-400 transition-all duration-200"></i>
+                    </button>
+                </li>
+                <li>
+                    <button class="music-item w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-50 text-sm flex justify-between items-center transition-colors duration-200"
+                            data-src="{{ url_for('static', filename='music/勾指起誓.mp3') }}">
+                        <span>勾指起誓</span>
+                        <i class="fa fa-play text-gray-400 transition-all duration-200"></i>
+                    </button>
+                </li>
+            </ul>
+
+            <!-- 额外控制按钮 -->
+            <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                <button id="stop-all" class="text-xs text-gray-500 hover:text-primary transition-colors duration-200">
+                    <i class="fa fa-stop mr-1"></i> 停止播放
+                </button>
+                <button id="shuffle-play" class="text-xs text-gray-500 hover:text-primary transition-colors duration-200">
+                    <i class="fa fa-random mr-1"></i> 随机播放
+                </button>
+            </div>
+        </div>
+
+        <!-- 音频元素 (隐藏) -->
+        <audio id="audio-player" loop>
+            <source src="" type="audio/mpeg">
+        </audio>
+    </div>
+
+    <script>
+        // 移动端菜单切换
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuButton = document.querySelector('.menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            if (menuButton && mobileMenu) {
+                menuButton.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+
+            // 音乐播放器逻辑
+            const musicToggle = document.getElementById('music-toggle');
+            const musicList = document.getElementById('music-list');
+            const audioPlayer = document.getElementById('audio-player');
+            const musicItems = document.querySelectorAll('.music-item');
+            const nowPlaying = document.getElementById('now-playing');
+            const spinIndicator = document.getElementById('spin-indicator');
+            const stopAllBtn = document.getElementById('stop-all');
+            const shufflePlayBtn = document.getElementById('shuffle-play');
+            let currentItem = null;
+            let isShuffle = false;
+
+            // 切换音乐列表显示/隐藏
+            musicToggle.addEventListener('click', function() {
+                const isVisible = !musicList.classList.contains('invisible');
+
+                if (isVisible) {
+                    // 隐藏列表
+                    musicList.classList.add('opacity-0', 'invisible', 'translate-y-4');
+                } else {
+                    // 显示列表
+                    musicList.classList.remove('opacity-0', 'invisible', 'translate-y-4');
+
+                    // 为每个列表项添加延迟动画
+                    const items = musicList.querySelectorAll('li');
+                    items.forEach((item, index) => {
+                        item.style.opacity = '0';
+                        item.style.transform = 'translateY(10px)';
+                        item.style.transition = 'opacity 0.2s ease-out, transform 0.2s ease-out';
+
+                        setTimeout(() => {
+                            item.style.opacity = '1';
+                            item.style.transform = 'translateY(0)';
+                        }, 50 + (index * 50));
+                    });
+                }
+            });
+
+            // 点击音乐项播放/暂停音乐
+            musicItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const src = this.getAttribute('data-src');
+                    const title = this.querySelector('span').textContent;
+
+                    // 如果点击的是当前播放的歌曲，则切换暂停/播放状态
+                    if (currentItem === this) {
+                        if (audioPlayer.paused) {
+                            audioPlayer.play();
+                            updatePlayState(this, true, title);
+                        } else {
+                            audioPlayer.pause();
+                            updatePlayState(this, false, title);
+                        }
+                        return;
+                    }
+
+                    // 更新当前播放状态
+                    if (currentItem) {
+                        updatePlayState(currentItem, false);
+                    }
+
+                    // 播放新歌曲
+                    currentItem = this;
+                    audioPlayer.src = src;
+                    audioPlayer.play();
+                    updatePlayState(currentItem, true, title);
+                });
+            });
+
+            // 更新播放状态
+            function updatePlayState(item, isPlaying, title = '') {
+                if (isPlaying) {
+                    item.classList.add('active', 'bg-primary/5');
+                    item.querySelector('i').className = 'fa fa-pause text-primary';
+                    item.querySelector('i').style.transform = 'scale(1.1)';
+
+                    // 更新播放信息
+                    nowPlaying.textContent = `正在播放: ${title || item.querySelector('span').textContent}`;
+
+                    // 更新控制按钮
+                    musicToggle.querySelector('i').className = 'fa fa-pause text-2xl absolute inset-0 flex items-center justify-center';
+                    spinIndicator.classList.remove('hidden');
+                    spinIndicator.classList.add('animate-rotate');
+                    musicToggle.classList.add('pulse-ring');
+                } else {
+                    item.classList.remove('active', 'bg-primary/5');
+                    item.querySelector('i').className = 'fa fa-play text-gray-400';
+                    item.querySelector('i').style.transform = 'scale(1)';
+
+                    // 更新播放信息
+                    if (title) {
+                        nowPlaying.textContent = `已暂停: ${title}`;
+                    }
+
+                    // 更新控制按钮
+                    musicToggle.querySelector('i').className = 'fa fa-music text-2xl absolute inset-0 flex items-center justify-center';
+                    spinIndicator.classList.add('hidden');
+                    spinIndicator.classList.remove('animate-rotate');
+                    musicToggle.classList.remove('pulse-ring');
+                }
+            }
+
+            // 音频结束时自动播放下一首
+            audioPlayer.addEventListener('ended', function() {
+                if (isShuffle) {
+                    // 随机播放
+                    const randomIndex = Math.floor(Math.random() * musicItems.length);
+                    musicItems[randomIndex].click();
+                } else if (currentItem && currentItem.parentElement.nextElementSibling) {
+                    // 播放下一首
+                    currentItem.parentElement.nextElementSibling.querySelector('.music-item').click();
+                } else if (musicItems.length > 0) {
+                    // 循环播放
+                    musicItems[0].click();
+                }
+            });
+
+            // 停止播放按钮
+            stopAllBtn.addEventListener('click', function() {
+                if (currentItem) {
+                    audioPlayer.pause();
+                    updatePlayState(currentItem, false);
+                    audioPlayer.src = '';
+                    nowPlaying.textContent = '未播放';
+                }
+            });
+
+            // 随机播放按钮
+            shufflePlayBtn.addEventListener('click', function() {
+                isShuffle = !isShuffle;
+                if (isShuffle) {
+                    this.classList.add('text-primary', 'bg-primary/10', 'px-2', 'py-0.5', 'rounded');
+                    // 如果当前没有播放，随机播放一首
+                    if (!currentItem) {
+                        const randomIndex = Math.floor(Math.random() * musicItems.length);
+                        musicItems[randomIndex].click();
+                    }
+                } else {
+                    this.classList.remove('text-primary', 'bg-primary/10', 'px-2', 'py-0.5', 'rounded');
+                }
+            });
+
+            // 点击页面其他地方关闭音乐列表
+            document.addEventListener('click', function(e) {
+                if (!document.getElementById('music-player').contains(e.target) &&
+                    !musicList.classList.contains('invisible')) {
+                    musicList.classList.add('opacity-0', 'invisible', 'translate-y-4');
+                }
+            });
+
+            // 点击音乐列表内部不关闭
+            musicList.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+
+            // 窗口滚动时调整音乐播放器位置
+            window.addEventListener('scroll', function() {
+                const scrollY = window.scrollY;
+                const musicPlayer = document.getElementById('music-player');
+
+                if (scrollY > 100) {
+                    musicPlayer.classList.add('bottom-4');
+                    musicPlayer.classList.remove('bottom-6');
+                } else {
+                    musicPlayer.classList.add('bottom-6');
+                    musicPlayer.classList.remove('bottom-4');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
